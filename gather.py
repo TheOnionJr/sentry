@@ -24,7 +24,7 @@ def read_hosts(cursor):
 
 def find_scannable_hosts(cursor,database):
     #Find 10 hosts to scan that are not reserved
-    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY last_scam FETCH FIRST 16 ROWS only"
+    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY last_scan FETCH FIRST 16 ROWS only"
     cursor.execute(psql_statement)
     hosts = cursor.fetchall()
 
@@ -149,16 +149,12 @@ def print_hostname_not_exists():
 def protocol_type(scanner, address, port):
     try:
         if scanner[address].has_tcp(port):
-            print("tcp")
             return 'tcp'
     except:
-        print("not tcp")
         try:
             if scanner[address].has_upd(port):
-                print("udp")
                 return 'udp'
         except:
-            print("not udp")
             return ''
 
 def create_ipaddr_list(host_list):
@@ -209,7 +205,6 @@ while True:
                     service_product = ''
                     service_version = ''
                     if scanner[host[1]].has_tcp(port) or scanner[host[1]].has_udp(port): #Host[1] = ip address
-                        print("Found port")
                         proto = protocol_type(scanner, host[1], port)
                         try:
                             state = scanner[host[1]][proto][port]['state']
