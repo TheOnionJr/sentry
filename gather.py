@@ -22,6 +22,26 @@ def read_hosts(cursor):
     cursor.execute(psql_statement)
     return cursor.fetchall()
 
+def find_scannable_hosts(cursor,database):
+    #Find 10 hosts to scan that are not reserved
+    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY id FETCH FIRST 10 ROWS only"
+    cursor.execute(psql_statement)
+    hosts = cursor.fetchall()
+
+    #Race condition is technically possible, but should not matter. Only loss is efficensy
+    for row in hosts:
+        psql_statement = "UPDATE host SET reserved = true WHERE id = {0}".format(row[0])
+        cursor.execute(psql_statement)
+        database.commit()
+    return hosts
+
+def free_hosts(hosts,cursor,database):
+    for row in hosts:
+        psql_statement = "UPDATE host SET reserved = false where id = {0}".format(row[0])
+        cursor.execute(psql_statement)
+        database.commit()
+
+
 def write_host(state,hostname,host_id,database,cursor,timestamp):
     print_neutral()
     print("Updating host data...")
@@ -137,29 +157,42 @@ def protocol_type(scanner, address):
         except:
             return ''
 
+def create_ipaddr_list(host_list):
+    ipaddr_to_return = []
+    for row in host_list:
+        ipaddr_to_return.append(row[1])
+    print(ipaddr_to_return)
+    return ipaddr_to_return
+
+
 
 ######################Main######################
 
 while True:
-    for row in read_hosts(cursor):
-        hostname = ''
-        state = ''
-        print("")
+    host_list = find_scannable_hosts(cursor,database)
+    print(host_list)
+    hostname = ''
+    state = ''
+    hosts_to_scan = create_ipaddr_list(host_list)
+    print("")
+    for host_temp in host_list:
         print_neutral()
-        print("Scanning host", row[1])
-        try:
-            timestamp = datetime.datetime.now()
-            scanner.scan(hosts=row[1], arguments='-A -p-')
+        print("Scanning host", host_temp[1])
+    try:
+        timestamp = datetime.datetime.now()
+        print("Made timestamp")
+        scanner.scan(hosts=host_to_scan, arguments='-A -p-')
+        for host in host_list:
             try:
-                state = print_host_up(scanner[row[1]].state())
+                state = print_host_up(scanner[host[1]].state())
             except:
                 hostname = print_host_down()
             if state == 'up':
                 try:
-                    hostname = print_hostname_exists(scanner[row[1]].hostname())
+                    hostname = print_hostname_exists(scanner[host[1]].hostname())
                 except:
                     hostname = print_hostname_not_exists()
-            write_host(state,hostname,row[0],database,cursor,timestamp)
+            write_host(state,hostname,host[0],database,cursor,timestamp)
             if state == 'up':
                 ports = []
                 protocols = []
@@ -176,30 +209,30 @@ while True:
                     service_info = ''
                     service_product = ''
                     service_version = ''
-                    if scanner[row[1]].has_tcp(port) or scanner[row[1]].has_udp(port): #Row[1] = ip address
-                        proto = protocol_type(scanner, row[1])
+                    if scanner[host[1]].has_tcp(port) or scanner[host[1]].has_udp(port): #Host[1] = ip address
+                        proto = protocol_type(scanner, host[1])
                         try:
-                            state = scanner[row[1]][proto][port]['state']
+                            state = scanner[host[1]][proto][port]['state']
                         except:
                             pass
                         try:
-                            service_name = scanner[row[1]][proto][port]['name']
+                            service_name = scanner[host[1]][proto][port]['name']
                         except:
                             pass
                         try:
-                            service_version = scanner[row[1]][proto][port]['product']
+                            service_version = scanner[host[1]][proto][port]['product']
                         except:
                             pass
                         try:
-                            service_info = scanner[row[1]][proto][port]['extrainfo']
+                            service_info = scanner[host[1]][proto][port]['extrainfo']
                         except:
                             pass
 
-                        update = new_service(port,row[0],database,cursor)
+                        update = new_service(port,host[0],database,cursor)
                         if not update:
                             print_positive()
                             print("Found new service:",service_name,"\tVersion:",service_version,"\tPort:",port,"\tState:",state)
-                            insert_service_row(row[0],port,proto,service_name,service_product,service_version,service_info,state,database,cursor)
+                            insert_service_row(host[0],port,proto,service_name,service_product,service_version,service_info,state,database,cursor)
                             ports.append(port)
                             protocols.append(proto)
                             names.append(service_name)
@@ -210,11 +243,12 @@ while True:
                         else:
                             print_neutral()
                             print("Updating service:",service_name,"on port:",port)
-                            update_service_row(service_name,service_product,service_version,service_info,row[0],port,database,cursor)
+                            update_service_row(service_name,service_product,service_version,service_info,host[0],port,database,cursor)
                 if service_discovery:
                     print_discovery(ports,protocols,names,products,versions,infos)
-        except:
-            cursor.close()
-            database.close()
-            sys.exit('Scan Failed... Time to debug this shit lmao\n')
-            pass
+    except:
+        free_hosts(host_list,cursor,database)
+        cursor.close()
+        database.close()
+        sys.exit('Scan Failed... Time to debug this shit lmao\n')
+        pass
