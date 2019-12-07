@@ -42,12 +42,12 @@ def free_hosts(hosts,cursor,database):
         database.commit()
 
 
-def write_host(state,hostname,host_id,database,cursor,timestamp):
+def write_host(state,hostname,host_id,database,cursor):
     print_neutral()
     print("Updating host data...")
     try:
-        psql_statement = " UPDATE host SET state = %s, hostname = %s, last_scan = %s WHERE id = %s"
-        insert = (state, hostname, timestamp, host_id)
+        psql_statement = " UPDATE host SET state = %s, hostname = %s, last_scan = NOW() WHERE id = %s"
+        insert = (state, hostname, host_id)
         cursor.execute(psql_statement,insert)
         database.commit()
         print_neutral()
@@ -175,7 +175,6 @@ def create_ipaddr_list(host_list):
 while True:
     host_list = find_scannable_hosts(cursor,database)
     try:
-        timestamp = datetime.datetime.now()
         for host in host_list:
             hostname = ''
             state = ''
@@ -192,7 +191,7 @@ while True:
                     hostname = print_hostname_exists(scanner[host[1]].hostname())
                 except:
                     hostname = print_hostname_not_exists()
-            write_host(state,hostname,host[0],database,cursor,timestamp)
+            write_host(state,hostname,host[0],database,cursor)
             if state == 'up':
                 ports = []
                 protocols = []
