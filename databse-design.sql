@@ -9,10 +9,11 @@ CREATE TABLE host (
   ip_addr varchar(15),
   auto_sys SERIAL,
   state varchar(10),
-  last_scan varchar(255),
+  last_scan timestamp DEFAULT NOW(),
   os_name varchar(255),
   os_flavour varchar(10),
   hostname varchar(255),
+  reserved boolean DEFAULT false,
   PRIMARY KEY (id),
   FOREIGN KEY (auto_sys) REFERENCES auto_system(id)
 );

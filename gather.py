@@ -1,7 +1,7 @@
 import nmap, psycopg2, datetime, yaml, sys
 
 with open('creds.yaml', 'r') as file:
-    doc = yaml.load(file)
+    doc = yaml.load(file, Loader=yaml.FullLoader)
 db_host = doc['host']
 db_name = doc['database']
 db_user = doc['user']
@@ -14,17 +14,40 @@ cursor = database.cursor()
 #Init scanner object:
 scanner = nmap.PortScanner()
 
+
+#############Functions###############
+
 def read_hosts(cursor):
     psql_statement = "SELECT id,ip_addr FROM host"
     cursor.execute(psql_statement)
     return cursor.fetchall()
 
-def write_host(state,hostname,host_id,database,cursor,timestamp):
+def find_scannable_hosts(cursor,database):
+    #Find 10 hosts to scan that are not reserved
+    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY last_scan FETCH FIRST 16 ROWS only"
+    cursor.execute(psql_statement)
+    hosts = cursor.fetchall()
+
+    #Race condition is technically possible, but should not matter. Only loss is efficensy
+    for row in hosts:
+        psql_statement = "UPDATE host SET reserved = true WHERE id = {0}".format(row[0])
+        cursor.execute(psql_statement)
+        database.commit()
+    return hosts
+
+def free_hosts(hosts,cursor,database):
+    for row in hosts:
+        psql_statement = "UPDATE host SET reserved = false where id = {0}".format(row[0])
+        cursor.execute(psql_statement)
+        database.commit()
+
+
+def write_host(state,hostname,host_id,database,cursor):
     print_neutral()
     print("Updating host data...")
     try:
-        psql_statement = " UPDATE host SET state = %s, hostname = %s, last_scan = %s WHERE id = %s"
-        insert = (state, hostname, timestamp, host_id)
+        psql_statement = " UPDATE host SET state = %s, hostname = %s, last_scan = NOW() WHERE id = %s"
+        insert = (state, hostname, host_id)
         cursor.execute(psql_statement,insert)
         database.commit()
         print_neutral()
@@ -123,37 +146,48 @@ def print_hostname_not_exists():
     print_neutral()
     print("No hostname found")
 
-def protocol_type(scanner, address):
+def protocol_type(scanner, address, port):
     try:
-        if scanner[address].has_tcp():
-            return 'TCP'
+        if scanner[address].has_tcp(port):
+            return 'tcp'
     except:
         try:
-            if scanner[address].has_upd():
-                return 'UDP'
+            if scanner[address].has_upd(port):
+                return 'udp'
         except:
             return ''
 
+def create_ipaddr_list(host_list):
+    ipaddr_to_return = []
+    for row in host_list:
+        ipaddr_to_return.append(row[1])
+    print(ipaddr_to_return)
+    return ipaddr_to_return
+
+
+
+######################Main######################
+
 while True:
-    for row in read_hosts(cursor):
-        hostname = ''
-        state = ''
-        print("")
-        print_neutral()
-        print("Scanning host", row[1])
-        try:
-            timestamp = datetime.datetime.now()
-            scanner.scan(hosts=row[1], arguments='-A -p-')
+    host_list = find_scannable_hosts(cursor,database)
+    try:
+        for host in host_list:
+            hostname = ''
+            state = ''
+            print("")
+            print_neutral()
+            print("Scanning host", host[1])
+            scanner.scan(hosts=host[1], arguments='-A -p-')
             try:
-                state = print_host_up(scanner[row[1]].state())
+                state = print_host_up(scanner[host[1]].state())
             except:
-                hostname = print_host_down()
+                state = print_host_down()
             if state == 'up':
                 try:
-                    hostname = print_hostname_exists(scanner[row[1]].hostname())
+                    hostname = print_hostname_exists(scanner[host[1]].hostname())
                 except:
                     hostname = print_hostname_not_exists()
-            write_host(state,hostname,row[0],database,cursor,timestamp)
+            write_host(state,hostname,host[0],database,cursor)
             if state == 'up':
                 ports = []
                 protocols = []
@@ -170,30 +204,30 @@ while True:
                     service_info = ''
                     service_product = ''
                     service_version = ''
-                    if scanner[row[1]].has_tcp(port) or scanner[row[1]].has_udp(port):
-                        proto = protocol_type(scanner, row[1])
+                    if scanner[host[1]].has_tcp(port) or scanner[host[1]].has_udp(port): #Host[1] = ip address
+                        proto = protocol_type(scanner, host[1], port)
                         try:
-                            state = scanner[row[1]][proto][port]['state']
+                            state = scanner[host[1]][proto][port]['state']
                         except:
                             pass
                         try:
-                            service_name = scanner[row[1]][proto][port]['name']
+                            service_name = scanner[host[1]][proto][port]['name']
                         except:
                             pass
                         try:
-                            service_version = scanner[row[1]][proto][port]['product']
+                            service_version = scanner[host[1]][proto][port]['product']
                         except:
                             pass
                         try:
-                            service_info = scanner[row[1]][proto][port]['extrainfo']
+                            service_info = scanner[host[1]][proto][port]['extrainfo']
                         except:
                             pass
 
-                        update = new_service(port,row[0],database,cursor)
+                        update = new_service(port,host[0],database,cursor)
                         if not update:
                             print_positive()
                             print("Found new service:",service_name,"\tVersion:",service_version,"\tPort:",port,"\tState:",state)
-                            insert_service_row(row[0],port,proto,service_name,service_product,service_version,service_info,state,database,cursor)
+                            insert_service_row(host[0],port,proto,service_name,service_product,service_version,service_info,state,database,cursor)
                             ports.append(port)
                             protocols.append(proto)
                             names.append(service_name)
@@ -204,11 +238,13 @@ while True:
                         else:
                             print_neutral()
                             print("Updating service:",service_name,"on port:",port)
-                            update_service_row(service_name,service_product,service_version,service_info,row[0],port,database,cursor)
+                            update_service_row(service_name,service_product,service_version,service_info,host[0],port,database,cursor)
                 if service_discovery:
                     print_discovery(ports,protocols,names,products,versions,infos)
-        except:
-            cursor.close()
-            database.close()
-            sys.exit('Scan Failed... Time to debug this shit lmao\n')
-            pass
+        free_hosts(host_list,cursor,database)
+    except:
+        free_hosts(host_list,cursor,database)
+        cursor.close()
+        database.close()
+        sys.exit('Scan Failed... Time to debug this shit lmao\n')
+        pass
