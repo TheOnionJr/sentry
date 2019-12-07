@@ -14,6 +14,9 @@ cursor = database.cursor()
 #Init scanner object:
 scanner = nmap.PortScanner()
 
+
+#############Functions###############
+
 def read_hosts(cursor):
     psql_statement = "SELECT id,ip_addr FROM host"
     cursor.execute(psql_statement)
@@ -134,6 +137,9 @@ def protocol_type(scanner, address):
         except:
             return ''
 
+
+######################Main######################
+
 while True:
     for row in read_hosts(cursor):
         hostname = ''
@@ -170,7 +176,7 @@ while True:
                     service_info = ''
                     service_product = ''
                     service_version = ''
-                    if scanner[row[1]].has_tcp(port) or scanner[row[1]].has_udp(port):
+                    if scanner[row[1]].has_tcp(port) or scanner[row[1]].has_udp(port): #Row[1] = ip address
                         proto = protocol_type(scanner, row[1])
                         try:
                             state = scanner[row[1]][proto][port]['state']
