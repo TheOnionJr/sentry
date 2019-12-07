@@ -24,7 +24,7 @@ def read_hosts(cursor):
 
 def find_scannable_hosts(cursor,database):
     #Find 10 hosts to scan that are not reserved
-    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY id FETCH FIRST 10 ROWS only"
+    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY id FETCH FIRST 16 ROWS only"
     cursor.execute(psql_statement)
     hosts = cursor.fetchall()
 
@@ -146,13 +146,13 @@ def print_hostname_not_exists():
     print_neutral()
     print("No hostname found")
 
-def protocol_type(scanner, address):
+def protocol_type(scanner, address, port):
     try:
-        if scanner[address].has_tcp():
+        if scanner[address].has_tcp(port):
             return 'TCP'
     except:
         try:
-            if scanner[address].has_upd():
+            if scanner[address].has_upd(port):
                 return 'UDP'
         except:
             return ''
@@ -170,23 +170,19 @@ def create_ipaddr_list(host_list):
 
 while True:
     host_list = find_scannable_hosts(cursor,database)
-    print(host_list)
-    hostname = ''
-    state = ''
-    hosts_to_scan = create_ipaddr_list(host_list)
-    print("")
-    for host_temp in host_list:
-        print_neutral()
-        print("Scanning host", host_temp[1])
     try:
         timestamp = datetime.datetime.now()
-        print("Made timestamp")
-        scanner.scan(hosts=host_to_scan, arguments='-A -p-')
         for host in host_list:
+            hostname = ''
+            state = ''
+            print("")
+            print_neutral()
+            print("Scanning host", host[1])
+            scanner.scan(hosts=host[1], arguments='-A -p-')
             try:
                 state = print_host_up(scanner[host[1]].state())
             except:
-                hostname = print_host_down()
+                state = print_host_down()
             if state == 'up':
                 try:
                     hostname = print_hostname_exists(scanner[host[1]].hostname())
@@ -210,7 +206,9 @@ while True:
                     service_product = ''
                     service_version = ''
                     if scanner[host[1]].has_tcp(port) or scanner[host[1]].has_udp(port): #Host[1] = ip address
+                        print("Finding protocol")
                         proto = protocol_type(scanner, host[1])
+                        print("Found protocol", proto)
                         try:
                             state = scanner[host[1]][proto][port]['state']
                         except:
