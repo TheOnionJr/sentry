@@ -1,7 +1,7 @@
 import nmap, psycopg2, datetime, yaml, sys
 
 with open('creds.yaml', 'r') as file:
-    doc = yaml.load(file)
+    doc = yaml.load(file, Loader=yaml.FullLoader)
 db_host = doc['host']
 db_name = doc['database']
 db_user = doc['user']
