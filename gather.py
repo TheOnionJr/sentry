@@ -244,6 +244,7 @@ while True:
                             update_service_row(service_name,service_product,service_version,service_info,host[0],port,database,cursor)
                 if service_discovery:
                     print_discovery(ports,protocols,names,products,versions,infos)
+        free_hosts(host_list,cursor,database)
     except:
         free_hosts(host_list,cursor,database)
         cursor.close()
