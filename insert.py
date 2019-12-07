@@ -1,5 +1,6 @@
 import psycopg2
 import ipaddress
+import yaml
 
 with open('creds.yaml', 'r') as file:
     doc = yaml.load(file)
