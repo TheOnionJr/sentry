@@ -206,9 +206,7 @@ while True:
                     service_product = ''
                     service_version = ''
                     if scanner[host[1]].has_tcp(port) or scanner[host[1]].has_udp(port): #Host[1] = ip address
-                        print("Finding protocol")
                         proto = protocol_type(scanner, host[1])
-                        print("Found protocol", proto)
                         try:
                             state = scanner[host[1]][proto][port]['state']
                         except:
