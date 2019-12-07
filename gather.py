@@ -149,11 +149,11 @@ def print_hostname_not_exists():
 def protocol_type(scanner, address, port):
     try:
         if scanner[address].has_tcp(port):
-            return 'TCP'
+            return 'tcp'
     except:
         try:
             if scanner[address].has_upd(port):
-                return 'UDP'
+                return 'udp'
         except:
             return ''
 
