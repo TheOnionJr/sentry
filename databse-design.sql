@@ -6,7 +6,7 @@ CREATE TABLE auto_system (
 
 CREATE TABLE host (
   id SERIAL NOT NULL,
-  ip_addr varchar(15),
+  ip_addr varchar(15) UNIQUE,
   auto_sys SERIAL,
   state varchar(10),
   last_scan timestamp DEFAULT NOW(),
