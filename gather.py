@@ -46,7 +46,7 @@ def write_host(state,hostname,host_id,database,cursor):
     print_neutral()
     print("Updating host data...")
     try:
-        psql_statement = "UPDATE host SET state = %s, hostname = %s, last_scan = NOW(), priority = false, new = false WHERE id = %s"
+        psql_statement = "UPDATE host SET state = %s, hostname = %s, last_scan = NOW(), priority = false, recently_added = false WHERE id = %s"
         insert = (state, hostname, host_id)
         cursor.execute(psql_statement,insert)
         database.commit()
