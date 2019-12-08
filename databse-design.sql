@@ -6,7 +6,7 @@ CREATE TABLE auto_system (
 
 CREATE TABLE host (
   id SERIAL NOT NULL,
-  ip_addr varchar(15),
+  ip_addr varchar(15) UNIQUE,
   auto_sys SERIAL,
   state varchar(10),
   last_scan timestamp DEFAULT NOW(),
@@ -14,6 +14,8 @@ CREATE TABLE host (
   os_flavour varchar(10),
   hostname varchar(255),
   reserved boolean DEFAULT false,
+  priority boolean DEFAULT false,
+  recently_added boolean DEFAULT true,
   PRIMARY KEY (id),
   FOREIGN KEY (auto_sys) REFERENCES auto_system(id)
 );

@@ -24,7 +24,7 @@ def read_hosts(cursor):
 
 def find_scannable_hosts(cursor,database):
     #Find 10 hosts to scan that are not reserved
-    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY last_scan FETCH FIRST 16 ROWS only"
+    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY priority DESC, recently_added DESC, last_scan ASC FETCH FIRST 16 ROWS only"
     cursor.execute(psql_statement)
     hosts = cursor.fetchall()
 
@@ -46,7 +46,7 @@ def write_host(state,hostname,host_id,database,cursor):
     print_neutral()
     print("Updating host data...")
     try:
-        psql_statement = " UPDATE host SET state = %s, hostname = %s, last_scan = NOW() WHERE id = %s"
+        psql_statement = "UPDATE host SET state = %s, hostname = %s, last_scan = NOW(), priority = false, recently_added = false WHERE id = %s"
         insert = (state, hostname, host_id)
         cursor.execute(psql_statement,insert)
         database.commit()
@@ -60,7 +60,7 @@ def insert_service_row(host_id,port,proto,service_name,service_product,service_v
     print_neutral()
     print("Inserting new row")
     try:
-        psql_statement = " INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
+        psql_statement = "INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
         insert = (host_id,port,proto,service_name,service_product,service_version,service_info,state)
         cursor.execute(psql_statement,insert)
         database.commit()
@@ -82,7 +82,7 @@ def update_service_row(service_name,service_product,service_version,service_info
 
 
 def existing_ports(host_id,database,cursor):
-    psql_statement = " SELECT port FROM service WHERE host = %s"
+    psql_statement = "SELECT port FROM service WHERE host = %s"
     insert = (host_id)
     cursor.execute(psql_statement,[insert])
     database.commit()
