@@ -24,7 +24,7 @@ def read_hosts(cursor):
 
 def find_scannable_hosts(cursor,database):
     #Find 10 hosts to scan that are not reserved
-    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY priority DESC, new DESC, last_scan ASC FETCH FIRST 16 ROWS only"
+    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY priority DESC, recently_added DESC, last_scan ASC FETCH FIRST 16 ROWS only"
     cursor.execute(psql_statement)
     hosts = cursor.fetchall()
 
