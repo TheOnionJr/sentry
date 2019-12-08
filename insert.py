@@ -18,7 +18,7 @@ print("Subnet to add to database: ", end = '')
 subnet = str(input())
 
 for ip in ipaddress.ip_network(subnet):
-    psql_statement = " INSERT INTO host (ip_addr, auto_sys, new) VALUES (%s,%s,%s)"
+    psql_statement = " INSERT INTO host (ip_addr, auto_sys, recently_added) VALUES (%s,%s,%s)"
     iw = str(ipaddress.IPv4Address(ip))
     insert = (iw,1,"true")
     cursor.execute(psql_statement,insert)
