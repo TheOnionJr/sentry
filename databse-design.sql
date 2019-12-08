@@ -15,7 +15,7 @@ CREATE TABLE host (
   hostname varchar(255),
   reserved boolean DEFAULT false,
   priority boolean DEFAULT false,
-  new boolean DEFAULT true,
+  recently_added boolean DEFAULT true,
   PRIMARY KEY (id),
   FOREIGN KEY (auto_sys) REFERENCES auto_system(id)
 );
