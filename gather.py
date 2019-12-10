@@ -29,7 +29,7 @@ def write_to_db(host, scan_result):
     except:
         state = 'down'
     try:
-        hostname = scan_result['scan'][host]['hostnames'[0]]['name']
+        hostname = scan_result['scan'][host]['hostnames'][0]['name']
     except:
         hostname = None
     print(state,hostname)
