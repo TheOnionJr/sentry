@@ -1,4 +1,4 @@
-import nmap, psycopg2, datetime, yaml, sys
+import nmap, psycopg2, datetime, yaml, sys, time
 
 hosts_pr_session = 32
 
@@ -63,7 +63,7 @@ def write_to_db(host, scan_result):
                 state = scan_result['scan'][host]['tcp'][port]['state']
             except:
                 pass
-            psql_statement = "INSER INTO service (host, port, protocol, name, product, version, info, state) VALUES ('{0}',{1},{2},{3},{4},{5},{6},{7}) ON CONFLICT (host,port) UPDATE SET protocol = EXCLUDED.protocol, name = EXCLUDED.name, product = EXCLUDED.product, version = EXCLUDED.version, info = EXCLUDED.info, state = EXCLUDED.state".format(host,port,protocol,name,product,version,info,state)
+            psql_statement = "INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES ('{0}',{1},{2},{3},{4},{5},{6},{7}) ON CONFLICT (host,port) UPDATE SET protocol = EXCLUDED.protocol, name = EXCLUDED.name, product = EXCLUDED.product, version = EXCLUDED.version, info = EXCLUDED.info, state = EXCLUDED.state".format(host,port,protocol,name,product,version,info,state)
             cursor.execute(psql_statement)
     except:
         pass
