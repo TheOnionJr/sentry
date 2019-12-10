@@ -23,13 +23,13 @@ CREATE TABLE host (
 CREATE TABLE service (
   id SERIAL NOT NULL,
   state varchar(10),
-  host SERIAL NOT NULL,
+  host varchar(15) NOT NULL,
   port int,
   protocol varchar(10),
   name varchar(255),
   product varchar(255),
   version varchar(255),
   info varchar(255),
-  PRIMARY KEY (id),
-  FOREIGN KEY (host) REFERENCES host(id)
+  PRIMARY KEY (host,port),
+  FOREIGN KEY (host) REFERENCES host(ip_addr)
 );
