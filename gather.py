@@ -76,12 +76,14 @@ def write_to_db(host, scan_result):
         pass
     cursor.close()
     database.close()
+    free_host(host)
+    print("Starting new scan")
 
-def find_scannable_hosts(hosts_pr_session):
+def find_scannable_hosts():
     #Find 32 hosts to scan that are not reserved
     database = create_database_connection()
     cursor = create_database_cursor(database)
-    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY priority DESC, recently_added DESC, last_scan ASC FETCH FIRST {0} ROWS only".format(hosts_pr_session)
+    psql_statement = "SELECT id, ip_addr FROM host WHERE reserved = false ORDER BY priority DESC, recently_added DESC, last_scan ASC FETCH FIRST {0} ROWS only".format(1)
     cursor.execute(psql_statement)
     hosts = cursor.fetchall()
 
@@ -89,16 +91,21 @@ def find_scannable_hosts(hosts_pr_session):
     for row in hosts:
         psql_statement = "UPDATE host SET reserved = true WHERE id = {0}".format(row[0])
         cursor.execute(psql_statement)
+        database.commit()
+        return row[1]
 
-    database.commit()
-    return hosts
+def free_host(host):
+    database = create_database_connection()
+    cursor = create_database_cursor()
+    psql_statement = "UPDATE host set reserved = false, recently_added = false, priority = false WHERE ip_addr = '{0}'".format(host)
 
-def scans_still_running(scanner_list):
-    session_still_running = False
+def scans_comlete(scanner_list):
+    index = 0
     for session in scanner_list:
-        if session.still_scanning():
-            session_still_running = True
-    return session_still_running
+        if not session.still_scanning():
+            return int(index)
+        index = index + 1
+
 
 
 
@@ -144,11 +151,12 @@ def print_hostname_not_exists():
 ######################Main######################
 while True:
     scanner_list = []
-    hosts = find_scannable_hosts(hosts_pr_session)
 
     for num in range(hosts_pr_session):
         scanner_list.append(nmap.PortScannerAsync())
-        scanner_list[num].scan(hosts=hosts[num][1], arguments = '-A -p-', callback=write_to_db)
+        scanner_list[num].scan(hosts=find_scannable_hosts(), arguments = '-A -p-', callback=write_to_db)
 
-    while scans_still_running(scanner_list):
-        time.sleep(2)
+    while True:
+        i = scans_comlete(scanner_list)
+        if i is not None:
+            scanner_list[i].scan(hosts=find_scannable_hosts(), arguments = '-A -p-', callback=write_to_db)
