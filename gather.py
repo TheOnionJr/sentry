@@ -35,14 +35,16 @@ def write_to_db(host, scan_result):
     print(state,hostname)
     psql_statement = "UPDATE host SET state = '{0}', hostname = '{1}', reserved = false, priority = false, recently_added = true, last_scan = NOW() WHERE ip_addr = '{2}'".format(state,hostname,host)
     cursor.execute(psql_statement)
+    database.commit()
 
     try:
         for port in  scan_result['scan'][host]['tcp'].keys():
-            name = ''
-            product = ''
-            version = ''
-            info = ''
-            state = ''
+            name = '-'
+            product = '-'
+            version = '-'
+            info = '-'
+            state = '-'
+            protocol = 'tcp'
             try:
                 name = scan_result['scan'][host]['tcp'][port]['name']
             except:
@@ -63,11 +65,15 @@ def write_to_db(host, scan_result):
                 state = scan_result['scan'][host]['tcp'][port]['state']
             except:
                 pass
-            psql_statement = "INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES ('192.168.143.141',22,'tcp','name','product','version','info','state') ON CONFLICT (host,port) DO UPDATE SET protocol = EXCLUDED.protocol, name = EXCLUDED.name, product = EXCLUDED.product, version = EXCLUDED.version, info = EXCLUDED.info, state = EXCLUDED.state".format(host,port,protocol,name,product,version,info,state)
-            cursor.execute(psql_statement)
+            print(port,name,product,version,info,state)
+            try:
+                psql_statement = "INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES ('{0}',{1},'{2}','{3}','{4}','{5}','{6}','{7}') ON CONFLICT (host,port) DO UPDATE SET protocol = EXCLUDED.protocol, name = EXCLUDED.name, product = EXCLUDED.product, version = EXCLUDED.version, info = EXCLUDED.info, state = EXCLUDED.state".format(host,port,protocol,name,product,version,info,state)
+                cursor.execute(psql_statement)
+                database.commit()
+            except:
+                pass
     except:
         pass
-    database.commit()
     cursor.close()
     database.close()
 
