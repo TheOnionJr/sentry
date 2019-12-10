@@ -20,19 +20,28 @@ def write_to_db(host, scan_result):
     database = create_database_connection()
     cursor = create_database_cursor(database)
 
-    #Find id
-    psql_statement = "SELECT id from host WHERE ip_addr = "
     state = ''
     hostname = ''
+
     try:
         state = scan_result['scan'][host]['status']['state']
     except:
         state = 'down'
+
     try:
         hostname = scan_result['scan'][host]['hostnames'][0]['name']
     except:
         hostname = None
-    print(state,hostname)
+
+    print_green("[+] ")
+    print("IP address:", host)
+    print_green("[+] ")
+    print("Hostname:", hostname)
+    if state == 'up':
+        print_green("[+] ")
+    else:
+        print_red("[-] ")
+    print("State:", state, "\n")
     psql_statement = "UPDATE host SET state = '{0}', hostname = '{1}', reserved = false, priority = false, recently_added = true, last_scan = NOW() WHERE ip_addr = '{2}'".format(state,hostname,host)
     cursor.execute(psql_statement)
     database.commit()
@@ -65,7 +74,8 @@ def write_to_db(host, scan_result):
                 state = scan_result['scan'][host]['tcp'][port]['state']
             except:
                 pass
-            print(port,name,product,version,info,state)
+            print_blue("[*] ")
+            print("Host:",host,"Port:",port,"State:",state,"Name:",name,"Product:",product,"Version:",version)
             try:
                 psql_statement = "INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES ('{0}',{1},'{2}','{3}','{4}','{5}','{6}','{7}') ON CONFLICT (host,port) DO UPDATE SET protocol = EXCLUDED.protocol, name = EXCLUDED.name, product = EXCLUDED.product, version = EXCLUDED.version, info = EXCLUDED.info, state = EXCLUDED.state".format(host,port,protocol,name,product,version,info,state)
                 cursor.execute(psql_statement)
@@ -77,7 +87,7 @@ def write_to_db(host, scan_result):
     cursor.close()
     database.close()
     free_host(host)
-    print("Starting new scan")
+
 
 def find_scannable_hosts():
     #Find 32 hosts to scan that are not reserved
@@ -96,8 +106,10 @@ def find_scannable_hosts():
 
 def free_host(host):
     database = create_database_connection()
-    cursor = create_database_cursor()
+    cursor = create_database_cursor(database)
     psql_statement = "UPDATE host set reserved = false, recently_added = false, priority = false WHERE ip_addr = '{0}'".format(host)
+    cursor.execute(psql_statement)
+    database.commit()
 
 def scans_comlete(scanner_list):
     index = 0
@@ -119,34 +131,19 @@ def print_green(text):
 def print_blue(text):
     print("\033[96m {}\033[00m" .format(text), end = '')
 
-def print_positive():
+def print_positive(text):
     print_green("[+] ")
+    print(text)
 
-def print_neutral():
+def print_neutral(text):
     print_blue("[*] ")
+    print(text)
 
-def print_negative():
+def print_negative(text):
     print_red("[-] ")
+    print(text)
 
-def print_host_up(state):
-    print_positive()
-    print("Host is up")
-    return state
 
-def print_host_down():
-    print_negative()
-    print("Host down")
-    state = 'down'
-    return state
-
-def print_hostname_exists(hostname):
-    print_neutral()
-    print("Hostname:",hostname)
-    return hostname
-
-def print_hostname_not_exists():
-    print_neutral()
-    print("No hostname found")
 
 ######################Main######################
 while True:
