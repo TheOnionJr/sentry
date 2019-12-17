@@ -23,63 +23,51 @@ def write_to_db(host, scan_result):
     state = ''
     hostname = ''
 
+    print_positive(host)
     try:
-        state = scan_result['scan'][host]['status']['state']
+        hostname = print_positive(scan_result['scan'][host]['hostnames'][0]['name'])
+    except:
+        hostname = None
+    try:
+        state = print_positive(scan_result['scan'][host]['status']['state'])
     except:
         state = 'down'
 
+    update_host(host,state,hostname)
+    protocols = ['tcp','udp']
     try:
-        hostname = scan_result['scan'][host]['hostnames'][0]['name']
-    except:
-        hostname = None
-
-    print_green("[+] ")
-    print("IP address:", host)
-    print_green("[+] ")
-    print("Hostname:", hostname)
-    if state == 'up':
-        print_green("[+] ")
-    else:
-        print_red("[-] ")
-    print("State:", state, "\n")
-    psql_statement = "UPDATE host SET state = '{0}', hostname = '{1}', reserved = false, priority = false, recently_added = true, last_scan = NOW() WHERE ip_addr = '{2}'".format(state,hostname,host)
-    cursor.execute(psql_statement)
-    database.commit()
-
-    try:
-        for port in  scan_result['scan'][host]['tcp'].keys():
-            name = '-'
-            product = '-'
-            version = '-'
-            info = '-'
-            state = '-'
-            protocol = 'tcp'
+        for protocol in protocols:
             try:
-                name = scan_result['scan'][host]['tcp'][port]['name']
-            except:
-                pass
-            try:
-                product = scan_result['scan'][host]['tcp'][port]['product']
-            except:
-                pass
-            try:
-                version = scan_result['scan'][host]['tcp'][port]['version']
-            except:
-                pass
-            try:
-                info = scan_result['scan'][host]['tcp'][port]['extrainfo']
-            except:
-                pass
-            try:
-                state = scan_result['scan'][host]['tcp'][port]['state']
-            except:
-                pass
-            print_blue("[*] ")
-            print("Host:",host,"Port:",port,"State:",state,"Name:",name,"Product:",product,"Version:",version)
-            try:
-                psql_statement = "INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES ('{0}',{1},'{2}','{3}','{4}','{5}','{6}','{7}') ON CONFLICT (host,port) DO UPDATE SET protocol = EXCLUDED.protocol, name = EXCLUDED.name, product = EXCLUDED.product, version = EXCLUDED.version, info = EXCLUDED.info, state = EXCLUDED.state".format(host,port,protocol,name,product,version,info,state)
-                cursor.execute(psql_statement)
-                database.commit()
+                for port in  scan_result['scan'][host][protocol].keys():
+                    key_list = []
+                    try:
+                        key_list[0] = scan_result['scan'][host]['tcp'][port]['name']
+                    except:
+                        key_list[0] = None
+                    try:
+                        key_list[1] = scan_result['scan'][host]['tcp'][port]['product']
+                    except:
+                        key_list[1] = None
+                    try:
+                        key_list[2] = scan_result['scan'][host]['tcp'][port]['version']
+                    except:
+                        key_list[2] = None
+                    try:
+                        key_list[3] = scan_result['scan'][host]['tcp'][port]['extrainfo']
+                    except:
+                        key_list[3] = None
+                    try:
+                        key_list[4] = scan_result['scan'][host]['tcp'][port]['state']
+                    except:
+                        key_list[4] = None
+                    print_blue("[*] ")
+                    print("Host:",host,"Port:",port,"State:",state,"Name:",key_list[0],"Product:",key_list[1],"Version:",key_list[2])
+                    try:
+                        psql_statement = "INSERT INTO service (host, port, protocol, name, product, version, info, state) VALUES ('{0}',{1},'{2}','{3}','{4}','{5}','{6}','{7}') ON CONFLICT (host,port) DO UPDATE SET protocol = EXCLUDED.protocol, name = EXCLUDED.name, product = EXCLUDED.product, version = EXCLUDED.version, info = EXCLUDED.info, state = EXCLUDED.state".format(host,port,protocol,key_list[0],key_list[1],key_list[2],key_list[3],key_list[4])
+                        cursor.execute(psql_statement)
+                        database.commit()
+                    except:
+                        pass
             except:
                 pass
     except:
@@ -111,6 +99,11 @@ def free_host(host):
     cursor.execute(psql_statement)
     database.commit()
 
+def update_host(host,hostname,state):
+    psql_statement = "UPDATE host SET state = '{0}', hostname = '{1}', reserved = false, priority = false, recently_added = true, last_scan = NOW() WHERE ip_addr = '{2}'".format(state,hostname,host)
+    cursor.execute(psql_statement)
+    database.commit()
+
 def scans_comlete(scanner_list):
     index = 0
     for session in scanner_list:
@@ -119,6 +112,22 @@ def scans_comlete(scanner_list):
         index = index + 1
 
 
+
+#####PRINT FUNCTIONS#####
+def print_positive(variable):
+    print_green("[+] ")
+    print(variable)
+    return variable
+
+def print_neutral(variable):
+    print_blue("[*] ")
+    print(variable)
+    return variable
+
+def print_negative(variable):
+    print_red("[-] ")
+    print(variable)
+    return variable
 
 
 #####COLORS#####
@@ -131,29 +140,19 @@ def print_green(text):
 def print_blue(text):
     print("\033[96m {}\033[00m" .format(text), end = '')
 
-def print_positive(text):
-    print_green("[+] ")
-    print(text)
 
-def print_neutral(text):
-    print_blue("[*] ")
-    print(text)
-
-def print_negative(text):
-    print_red("[-] ")
-    print(text)
 
 
 
 ######################Main######################
 while True:
     scanner_list = []
-
+    arguments = '-sS -sU -A -p-'
     for num in range(hosts_pr_session):
         scanner_list.append(nmap.PortScannerAsync())
-        scanner_list[num].scan(hosts=find_scannable_hosts(), arguments = '-A -p-', callback=write_to_db)
+        scanner_list[num].scan(hosts=find_scannable_hosts(), arguments = arguments, callback=write_to_db)
 
     while True:
         i = scans_comlete(scanner_list)
         if i is not None:
-            scanner_list[i].scan(hosts=find_scannable_hosts(), arguments = '-A -p-', callback=write_to_db)
+            scanner_list[i].scan(hosts=find_scannable_hosts(), arguments = arguments, callback=write_to_db)
