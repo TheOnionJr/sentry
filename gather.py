@@ -1,6 +1,6 @@
 import nmap, psycopg2, datetime, yaml, sys, time
 
-hosts_pr_session = 32
+hosts_pr_session = 8
 
 #############Functions###############
 def create_database_connection():
@@ -100,6 +100,8 @@ def free_host(host):
     database.commit()
 
 def update_host(host,hostname,state):
+    database = create_database_connection()
+    cursor = create_database_cursor(database)
     psql_statement = "UPDATE host SET state = '{0}', hostname = '{1}', reserved = false, priority = false, recently_added = true, last_scan = NOW() WHERE ip_addr = '{2}'".format(state,hostname,host)
     cursor.execute(psql_statement)
     database.commit()
