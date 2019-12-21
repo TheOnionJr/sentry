@@ -8,6 +8,7 @@ __pycache__/
 
 # Credentials file for db
 creds.yaml
+config.yaml
 
 # Differetnt testing and data files
 test2.py

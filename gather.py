@@ -1,15 +1,20 @@
 import nmap, psycopg2, datetime, yaml, sys, time
 
-hosts_pr_session = 32
-
 #############Functions###############
-def create_database_connection():
-    with open('creds.yaml', 'r') as file:
+def get_conf_var(var_name_list):
+    var_value_list = []
+    with open('config.yaml', 'r') as file:
         doc = yaml.load(file, Loader=yaml.FullLoader)
-    db_host = doc['host']
-    db_name = doc['database']
-    db_user = doc['user']
-    db_user_password = doc['password']
+    for variable in var_name:
+        var_value_list.append(doc[variable])
+    return var_value_list
+
+def create_database_connection():
+    var_value_list = get_conf_var(var_name_list = ['host','database','user','password'])
+    db_host = var_value_list[0]
+    db_name = var_value_list[1]
+    db_user = var_value_list[2]
+    db_pass = var_value_list[3]
     return psycopg2.connect(host=db_host,database=db_name,user=db_user,password=db_user_password)
 
 def create_database_cursor(database):
@@ -145,6 +150,7 @@ def print_blue(text):
 
 
 ######################Main######################
+hosts_pr_session = get_conf_var(args = ['hosts_pr_session'])
 while True:
     scanner_list = []
     arguments = '-sS -sU -A -p-'
