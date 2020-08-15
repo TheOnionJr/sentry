@@ -1,13 +1,6 @@
-CREATE TABLE auto_system (
-  id SERIAL NOT NULL,
-  name varchar(250),
-  PRIMARY KEY (id)
-);
-
 CREATE TABLE host (
   id SERIAL NOT NULL,
   ip_addr varchar(15) UNIQUE,
-  auto_sys SERIAL,
   state varchar(10),
   last_scan timestamp DEFAULT NOW(),
   os_name varchar(255),
@@ -35,7 +28,7 @@ CREATE TABLE service (
 
 CREATE TABLE script (
   id SERIAL NOT NULL,
-  service_id int NOT NULL,
+  service_id SERIAL,
   index varchar(250),
   result TEXT,
   PRIMARY KEY (id),
