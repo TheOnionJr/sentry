@@ -9,7 +9,7 @@ CREATE TABLE host (
   reserved boolean DEFAULT false,
   priority boolean DEFAULT false,
   recently_added boolean DEFAULT true,
-  PRIMARY KEY (id),
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE service (
