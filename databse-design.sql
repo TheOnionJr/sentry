@@ -17,7 +17,6 @@ CREATE TABLE host (
   priority boolean DEFAULT false,
   recently_added boolean DEFAULT true,
   PRIMARY KEY (id),
-  FOREIGN KEY (auto_sys) REFERENCES auto_system(id)
 );
 
 CREATE TABLE service (
@@ -32,4 +31,13 @@ CREATE TABLE service (
   info varchar(255),
   PRIMARY KEY (host,port),
   FOREIGN KEY (host) REFERENCES host(ip_addr)
+);
+
+CREATE TABLE script (
+  id SERIAL NOT NULL,
+  service_id int NOT NULL,
+  index varchar(250),
+  result TEXT,
+  PRIMARY KEY (id),
+  FOREIGN KEY (service_id) REFERENCES service(id)
 );
