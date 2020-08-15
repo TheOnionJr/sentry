@@ -13,7 +13,7 @@ CREATE TABLE host (
 );
 
 CREATE TABLE service (
-  id SERIAL NOT NULL,
+  id SERIAL NOT NULL UNIQUE,
   state varchar(10),
   host varchar(15) NOT NULL,
   port int,
